@@ -112,7 +112,7 @@
                 <div id="area-descricao">
                     <h4 style="margin:0 0 10px 0; border-bottom: 2px solid var(--primary); display: inline-block;">Descrição do Exercício</h4>
                     <div id="texto-descricao">
-                        A ferramenta aparecerá para realizar o movimento a cada acerto e desaparecerá após 3 segundos. Calibrada 25% acima.
+                        A ferramenta aparecerá para realizar o movimento a cada acerto e desaparecerá após 3 segundos. Calibrada para MS Edge.
                     </div>
                 </div>
             </div>
@@ -182,6 +182,7 @@
         function mudarExercicio(id) {
             exAtual = id;
             document.getElementById('img-desenho').src = `ex_coord${id}.jpg`;
+            document.getElementById('tit-ex').innerText = `Exercício ${id}`;
             const tabela = document.getElementById('corpo-tabela');
             const gabarito = document.getElementById('corpo-gabarito');
             tabela.innerHTML = ""; gabarito.innerHTML = "";
@@ -194,28 +195,20 @@
                 tabela.appendChild(tr);
 
                 const trG = document.createElement('tr');
-                const gabX = exerciciosCoord[id] && exerciciosCoord[id].gabarito[p] ? exerciciosCoord[id].gabarito[p].x : "";
-                const gabZ = exerciciosCoord[id] && exerciciosCoord[id].gabarito[p] ? exerciciosCoord[id].gabarito[p].z : "";
-                
-                trG.innerHTML = `<td>${p}</td>
-                    <td><span id="gab_${p}_x" class="valor-gab">${gabX}</span></td>
-                    <td><span id="gab_${p}_z" class="valor-gab">${gabZ}</span></td>`;
+                const gabX = (exerciciosCoord[id] && exerciciosCoord[id].gabarito[p]) ? exerciciosCoord[id].gabarito[p].x : "";
+                const gabZ = (exerciciosCoord[id] && exerciciosCoord[id].gabarito[p]) ? exerciciosCoord[id].gabarito[p].z : "";
+                trG.innerHTML = `<td>${p}</td><td><span id="gab_${p}_x" class="valor-gab">${gabX}</span></td><td><span id="gab_${p}_z" class="valor-gab">${gabZ}</span></td>`;
                 gabarito.appendChild(trG);
             });
-            
             document.querySelectorAll('.ex-btn').forEach(b => b.classList.remove('active'));
-            if(document.getElementById(`btn-${id}`)) {
-                document.getElementById(`btn-${id}`).classList.add('active');
-            }
+            if(document.getElementById(`btn-${id}`)) document.getElementById(`btn-${id}`).classList.add('active');
         }
 
         function processar(ponto, eixo) {
-            if(!exerciciosCoord[exAtual] || !exerciciosCoord[exAtual].gabarito[ponto]) return;
-            
+            if(!exerciciosCoord[exAtual]) return;
             const input = document.getElementById(`${eixo.toUpperCase()}_${ponto}`);
             const val = input.value.trim();
             const gab = exerciciosCoord[exAtual].gabarito[ponto][eixo];
-
             if(val === gab) { 
                 input.className = "input-coord input-sucesso"; 
                 input.disabled = true;
@@ -232,30 +225,16 @@
             const inX = document.getElementById(`X_${ponto}`);
             const inZ = document.getElementById(`Z_${ponto}`);
             const tool = document.getElementById('ferramenta');
-
             if(inX.disabled && inZ.disabled) {
                 document.getElementById(`gab_${ponto}_x`).classList.add('revelado');
                 document.getElementById(`gab_${ponto}_z`).classList.add('revelado');
-                
                 if(mapaVisual[exAtual] && mapaVisual[exAtual][ponto]) {
                     const pos = mapaVisual[exAtual][ponto];
-                    
-                    // --- DETECTOR DE NAVEGADOR PARA CALIBRAÇÃO FINA ---
                     const ua = navigator.userAgent;
-                    let ajusteLeft = 0; // Edge é a base, então o ajuste começa em zero
-
-                    // Se for Chrome (Chrome sempre tem "Chrome" no nome, mas Edge tem "Edg" E "Chrome". Por isso excluímos o "Edg")
-                    if (ua.includes("Chrome") && !ua.includes("Edg")) {
-                        ajusteLeft = -0.5; // Ajuste para Chrome. Mude para 2 se a ferramenta precisar ir para a direita.
-                    }
-
-                    // Calcula a posição convertendo a string de porcentagem em número e somando o ajuste
-                    const finalTop = parseFloat(pos.top);
-                    const finalLeft = parseFloat(pos.left) + ajusteLeft;
-
+                    let ajusteLeft = (ua.includes("Chrome") && !ua.includes("Edg")) ? -2 : 0;
                     tool.style.opacity = "1";
-                    tool.style.top = finalTop + "%";
-                    tool.style.left = finalLeft + "%";
+                    tool.style.top = parseFloat(pos.top) + "%";
+                    tool.style.left = (parseFloat(pos.left) + ajusteLeft) + "%";
                     setTimeout(() => { tool.style.opacity = "0"; }, 3000);
                 }
             }
@@ -263,19 +242,14 @@
         }
 
         async function iniciarDemonstracao() {
-            if(!exerciciosCoord[exAtual]) {
-                alert("Gabarito ainda não configurado para este exercício.");
-                return;
-            }
             const btnDemo = document.querySelector('.btn-demo');
             btnDemo.disabled = true;
             btnDemo.innerText = "⏳ EXECUTANDO...";
-            
             for (let p of pontos) {
                 const inX = document.getElementById(`X_${p}`);
                 const inZ = document.getElementById(`Z_${p}`);
                 const gab = exerciciosCoord[exAtual].gabarito[p];
-                if(gab.x !== "") {
+                if(gab) {
                     inX.value = gab.x; processar(p, 'x');
                     await new Promise(r => setTimeout(r, 600));
                     inZ.value = gab.z; processar(p, 'z');
@@ -300,72 +274,48 @@
             const nome = document.getElementById('nome-aluno').value;
             const whats = document.getElementById('whatsapp-aluno').value.replace(/\D/g, '');
             const email = document.getElementById('email-aluno').value;
-            
             if (!nome || whats.length < 10 || !email) {
-                alert("⚠️ Erro: Preencha os dados de identificação corretamente!");
+                alert("⚠️ Preencha Nome, WhatsApp e E-mail corretamente!");
                 return;
             }
-
-            btn.innerText = "⏳ PROCESSANDO...";
+            btn.innerText = "⏳ ENVIANDO...";
             btn.disabled = true;
 
-            let totalGeralAcertos = 0;
-            let totalGeralErros = 0;
-            let relatorioTexto = "";
-
+            let totalAcertos = 0, totalErros = 0, relTexto = "";
             for(let i=1; i<=4; i++) {
-                const a = dadosPerf.acertosPorEx[i] || 0;
-                const e = dadosPerf.errosPorEx[i] || 0;
-                totalGeralAcertos += a;
-                totalGeralErros += e;
-                const totalEx = a + e;
-                const pEx = totalEx > 0 ? Math.round((a / totalEx) * 100) : 0;
-                relatorioTexto += `Ex ${i}: ${pEx}% de acerto (${a} Ac / ${e} Er)\n`;
+                const a = dadosPerf.acertosPorEx[i] || 0, e = dadosPerf.errosPorEx[i] || 0;
+                totalAcertos += a; totalErros += e;
+                relTexto += `Ex ${i}: ${Math.round((a/(a+e||1))*100)}% (${a} Ac / ${e} Er)\n`;
             }
+            const notaGeral = Math.round((totalAcertos / (totalAcertos + totalErros || 1)) * 100);
+            const status = (notaGeral >= 60) ? "Aprovado!" : "Reprovado...";
+            const msgZap = `Relatório CNC: ${nome} | Nota: ${notaGeral}% | ${status}`;
+            const linkZap = `https://wa.me/55${whats}?text=${encodeURIComponent(msgZap)}`;
 
-            const totalTentativas = totalGeralAcertos + totalGeralErros;
-            const aproveitamentoGeral = totalTentativas > 0 ? Math.round((totalGeralAcertos / totalTentativas) * 100) : 0;
-            
-            let statusFinal = (aproveitamentoGeral >= 60) 
-                ? `Sendo Avaliado Pela Equipe e Aprovado Para Novos Desafios No Curso Do Zero À Programação CNC 30 Dias.`
-                : `Sendo Avaliado Pela Equipe e Reprovado Para Novos Desafios... Entre Em Contato Com a Equipe Para Tirar Suas Duvidas e Avançar No Curso Do Zero À Programação CNC 30 Dias.`;
+            // --- COLE SEU LINK ABAIXO ---
+            const URL_GOOGLE = "COLE_AQUI_SEU_LINK_DO_GOOGLE_SCRIPT";
 
-            const mensagemSuporte = `Olá, Sou Do Suporte CADCAM Brasil. Estamos Enviando Um Relatorio Com a Sua Evolução Nos 4 Exercicios Do Caderno De Exercicios!!\n\nAluno: ${nome}\n\nAproveitamento De ${aproveitamentoGeral}%\n\nRelatório Detalhado:\n${relatorioTexto}\n${statusFinal}`;
-            
-            const linkRespostaMagica = `https://wa.me/55${whats}?text=${encodeURIComponent(mensagemSuporte)}`;
-
-            const data = new FormData();
-            data.append("ALUNO", nome);
-            data.append("EMAIL_ALUNO", email);
-            data.append("WHATSAPP", whats);
-            data.append("APROVEITAMENTO_GERAL", aproveitamentoGeral + "%");
-            data.append("COPIE_ESTE_LINK_PARA_WHATSAPP", linkRespostaMagica);
-            data.append("RELATORIO_TECNICO", relatorioTexto);
-            data.append("_subject", `Certificação CNC: ${nome} (${aproveitamentoGeral}%)`);
+            const params = new URLSearchParams();
+            params.append("ALUNO", nome); params.append("EMAIL_ALUNO", email);
+            params.append("WHATSAPP", whats); params.append("APROVEITAMENTO_GERAL", notaGeral + "%");
+            params.append("COPIE_ESTE_LINK_PARA_WHATSAPP", linkZap); params.append("RELATORIO_TECNICO", relTexto);
 
             try {
-                const response = await fetch("https://script.google.com/macros/s/AKfycbw18eECsZK68HWzDAGR0SnP_1rmL1z7ZtLP_cDU_7Z0GjFqwq1v92eyxceQXqs9GVg/exec", { 
-                    method: "POST", body: data, headers: { 'Accept': 'application/json' }
-                });
-                if (response.ok) {
-                    alert("✅ CERTIFICAÇÃO ENVIADA COM SUCESSO!");
-                    btn.innerText = "🚀 RELATÓRIO ENVIADO";
-                } else { throw new Error(); }
+                await fetch(URL_GOOGLE, { method: "POST", mode: "no-cors", body: params });
+                alert("✅ CERTIFICAÇÃO ENVIADA COM SUCESSO!");
+                btn.innerText = "🚀 RELATÓRIO ENVIADO";
+                btn.classList.add('habilitado');
             } catch (e) {
-                alert("❌ Falha na conexão com o servidor. Verifique a internet e tente novamente.");
-                btn.disabled = false;
-                btn.innerText = "🚀 TENTAR REENVIAR";
+                alert("❌ Erro de conexão. Tente novamente.");
+                btn.disabled = false; btn.innerText = "🚀 TENTAR REENVIAR";
             }
         }
 
         window.onload = () => {
             const menu = document.getElementById('lista-botoes');
             for(let i=1; i<=4; i++){
-                const b = document.createElement('button'); 
-                b.className = 'ex-btn';
-                b.id = `btn-${i}`; 
-                b.innerText = `Exercício ${i}`; 
-                b.onclick = () => mudarExercicio(i);
+                const b = document.createElement('button'); b.className = 'ex-btn';
+                b.id = `btn-${i}`; b.innerText = `Exercício ${i}`; b.onclick = () => mudarExercicio(i);
                 menu.appendChild(b);
             }
             mudarExercicio(1);
